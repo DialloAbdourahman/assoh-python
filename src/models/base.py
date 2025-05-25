@@ -1,7 +1,10 @@
-from mongoengine import Document, DateTimeField, BooleanField, ReferenceField
+from mongoengine import Document, DateTimeField, BooleanField
+from datetime import datetime
 
 class BaseModel(Document):
-    created_at = DateTimeField(required=True)
+    meta = {'abstract': True}  
+
+    created_at = DateTimeField(required=True, default=datetime.utcnow())
     # created_by = ReferenceField()
     updated_at = DateTimeField()
     # updated_by = ReferenceField()

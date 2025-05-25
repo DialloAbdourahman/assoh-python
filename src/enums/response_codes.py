@@ -1,0 +1,11 @@
+from enum import Enum
+
+class EnumResponseCode(Enum):
+    SUCCESS = 'SUCCESS'
+    FAILED = 'FAILED'
+    SERVER_ERROR = 'SERVER_ERROR'
+
+class EnumResponseStatusCode(Enum):
+    CREATED_SUCCESSFULLY = 'CREATED_SUCCESSFULLY'
+    SOMETHING_WENT_WRONG = 'SOMETHING_WENT_WRONG'
+    EXISTS_ALREADY = 'EXISTS_ALREADY'
