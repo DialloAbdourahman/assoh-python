@@ -7,3 +7,7 @@ class CreateUserRequestDto(BaseModel):
     email: EmailStr = Field()
     password: str = Field(min_length=10, max_length=20)
     address: Optional[AddressDto] = None
+
+class LoginUserRequestDto(BaseModel):
+    email: EmailStr
+    password: str
