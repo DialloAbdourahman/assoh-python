@@ -39,10 +39,10 @@ class OrchestrationResult:
         }
     
     @staticmethod
-    def unauthorized( message:str, data:Any = None) -> dict:
+    def unauthorized(message:str, status_code:EnumResponseStatusCode = EnumResponseStatusCode.UNAUTHORIZED, data:Any = None) -> dict:
         return {
             "code": EnumResponseCode.FAILED.value,
-            "status_code": EnumResponseStatusCode.UNAUTHORIZED,
+            "status_code": status_code.value,
             "message": message,
             "data": data
         }

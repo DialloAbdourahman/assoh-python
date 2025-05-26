@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from jose import jwt
-
+from utils_types.user_info_in_token import UserInfoInToken
 from models.user import User
 from .config import access_token_secret_key, algorithm, access_token_duration_in_minutes
 
@@ -24,3 +24,16 @@ class TokenUtils:
 
         return jwt.encode(payload, access_token_secret_key, algorithm=algorithm)
      
+    @staticmethod
+    def decode_access_token(token:str) -> UserInfoInToken:
+        payload = jwt.decode(token, access_token_secret_key, algorithm)
+
+        decoded_user = payload.get("user", {})
+
+        user_info = UserInfoInToken(
+            id=decoded_user.get("id"),
+            email=decoded_user.get("email"),
+            role=decoded_user.get("role")
+        )
+
+        return user_info

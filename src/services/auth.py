@@ -1,4 +1,3 @@
-from datetime import datetime
 from dto.request.user import CreateUserRequestDto, LoginUserRequestDto
 from dto.response.user import UserResponseModel, LoginResponseModel
 from dto.response.user import parse_returned_user, parse_returned_logged_in_user
@@ -7,6 +6,7 @@ from models.user import User
 from utils.orchestration_result import OrchestrationResult, OrchestrationResultType
 from utils.password_utils import PasswordUtils
 from utils.token_utils import TokenUtils
+from utils_types.user_info_in_token import UserInfoInToken
 
 class AuthService:
     @staticmethod
@@ -66,8 +66,28 @@ class AuthService:
             return OrchestrationResult.success(
                 data=parse_returned_logged_in_user(user=found_user,
                 access_token=access_token), 
-                message='Account created successfully', 
-                status_code=EnumResponseStatusCode.CREATED_SUCCESSFULLY
+                message='Logged in successfully', 
+                status_code=EnumResponseStatusCode.RECOVERED_SUCCESSFULLY
+            )
+        except Exception as exc:
+            print(exc)
+            return OrchestrationResult.server_error()
+
+    @staticmethod
+    async def get_profile(user_info:UserInfoInToken) -> OrchestrationResultType[UserResponseModel]:
+        try:
+            found_user = User.objects(id=user_info.id, deleted=False).first()
+
+            if not found_user:
+                return OrchestrationResult.unauthorized(
+                    status_code=EnumResponseStatusCode.NOT_FOUND,
+                    message='User with this email does not exist'
+                )
+
+            return OrchestrationResult.success(
+                data=parse_returned_user(found_user), 
+                message='Profile retrieved successfully', 
+                status_code=EnumResponseStatusCode.RECOVERED_SUCCESSFULLY
             )
         except Exception as exc:
             print(exc)
