@@ -1,4 +1,6 @@
-from dto.request.user import CreateUserRequestDto, LoginUserRequestDto
+from models.address import Address
+from dto.request.address import AddressDto
+from dto.request.user import CreateUserRequestDto, LoginUserRequestDto, UpdateUserRequestDto
 from dto.response.user import UserResponseModel, LoginResponseModel
 from dto.response.user import parse_returned_user, parse_returned_logged_in_user
 from enums.response_codes import EnumResponseStatusCode
@@ -92,3 +94,29 @@ class AuthService:
         except Exception as exc:
             print(exc)
             return OrchestrationResult.server_error()
+        
+    @staticmethod
+    async def update_account(data:UpdateUserRequestDto, user_info:UserInfoInToken) -> OrchestrationResultType[UserResponseModel]:
+        try:
+            user:User = User.objects(id=user_info.id, deleted=False).first()
+
+            if not user:
+                return OrchestrationResult.unauthorized(
+                    status_code=EnumResponseStatusCode.NOT_FOUND,
+                    message='User does not exist'
+                )
+            
+            user.fullname = data.fullname or user.fullname
+            user.address = Address(**data.address.model_dump()) if data.address else user.address
+            
+            user.save()
+
+            return OrchestrationResult.success(
+                data=parse_returned_user(user), 
+                message='Account updated successfully', 
+                status_code=EnumResponseStatusCode.UPDATED_SUCCESSFULLY
+            )
+        except Exception as exc:
+            print(exc)
+            return OrchestrationResult.server_error()
+   

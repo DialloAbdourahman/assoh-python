@@ -11,3 +11,7 @@ class CreateUserRequestDto(BaseModel):
 class LoginUserRequestDto(BaseModel):
     email: EmailStr
     password: str
+
+class UpdateUserRequestDto(BaseModel):
+    fullname: Optional[str] = Field(min_length=5, max_length=30, default=None)
+    address: Optional[AddressDto] = None
