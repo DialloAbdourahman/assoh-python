@@ -1,8 +1,11 @@
 import math
+from dto.request.category import CreateCategoryDto, UpdateCategoryDto
+from dto.response.category import CategoryResponseModel, parse_returned_categories, parse_returned_category
 from dto.response.user import UserResponseModel, parse_returned_paginated_users
 from dto.response.user import parse_returned_user
 from enums.response_codes import EnumResponseStatusCode
 from enums.user_role_enum import EnumUserRole
+from models.category import Category
 from models.user import User
 from utils.orchestration_result import OrchestrationResult, OrchestrationResultType
 from datetime import datetime
@@ -24,7 +27,7 @@ class AdminService:
             
             if user.deleted == True:
                     return OrchestrationResult.failure(
-                        status_code=EnumResponseStatusCode.ACCOUNT_DELETED_ALREADY,
+                        status_code=EnumResponseStatusCode.DELETED_ALREADY,
                         message='This account has been deleted already.'
                     )
                         
@@ -61,8 +64,8 @@ class AdminService:
             
             if user.deleted == False:
                 return OrchestrationResult.failure(
-                    status_code=EnumResponseStatusCode.ACCOUNT_RESTORED_ALREADY,
-                    message='This account has been deleted already.'
+                    status_code=EnumResponseStatusCode.RESTORED_ALREADY,
+                    message='This account has been restored already.'
                 )
                         
             if str(user.id) == user_info.id:
@@ -152,6 +155,105 @@ class AdminService:
                 data=parse_returned_user(user), 
                 message='Account deleted successfully', 
                 status_code=EnumResponseStatusCode.UPDATED_SUCCESSFULLY
+            )
+        except Exception as exc:
+            print(exc)
+            return OrchestrationResult.server_error()
+
+    @staticmethod
+    async def create_category(category_request:CreateCategoryDto) -> OrchestrationResultType[CategoryResponseModel]:
+        try:
+            category: Category = Category(**category_request.model_dump())
+            category.save()
+
+            return OrchestrationResult.success(
+                data=parse_returned_category(category=category), 
+                message='Category created successfully', 
+                status_code=EnumResponseStatusCode.CREATED_SUCCESSFULLY
+            )
+        except Exception as exc:
+            print(exc)
+            return OrchestrationResult.server_error()
+        
+    @staticmethod
+    async def update_category(category_id:str, category_request:UpdateCategoryDto) -> OrchestrationResultType[CategoryResponseModel]:
+        try:
+            category: Category = Category.objects(id=category_id, deleted=False).first()
+
+            if not category:
+                return OrchestrationResult.failure(
+                        status_code=EnumResponseStatusCode.NOT_FOUND,
+                        message='Category does not exist.'
+                )
+            
+            category.name = category_request.name if category_request.name else category.name
+            category.description = category_request.description if category_request.description else category.description
+            category.save()
+
+            return OrchestrationResult.success(
+                data=parse_returned_category(category=category), 
+                message='Category updated successfully', 
+                status_code=EnumResponseStatusCode.UPDATED_SUCCESSFULLY
+            )
+        except Exception as exc:
+            print(exc)
+            return OrchestrationResult.server_error()
+        
+    @staticmethod
+    async def delete_category(category_id:str) -> OrchestrationResultType[CategoryResponseModel]:
+        try:
+            category: Category = Category.objects(id=category_id).first()
+
+            if not category:
+                return OrchestrationResult.failure(
+                        status_code=EnumResponseStatusCode.NOT_FOUND,
+                        message='Category does not exist.'
+                )
+            
+            if category.deleted == True:
+                return OrchestrationResult.failure(
+                        status_code=EnumResponseStatusCode.DELETED_ALREADY,
+                        message='This category has been deleted already.'
+                    )
+            
+            category.deleted = True
+            category.deleted_at = datetime.utcnow()
+            category.save()
+
+            return OrchestrationResult.success(
+                data=parse_returned_category(category=category), 
+                message='Category deleted successfully', 
+                status_code=EnumResponseStatusCode.DELETED_SUCCESSFULLY
+            )
+        except Exception as exc:
+            print(exc)
+            return OrchestrationResult.server_error()
+        
+    @staticmethod
+    async def restore_category(category_id:str) -> OrchestrationResultType[CategoryResponseModel]:
+        try:
+            category: Category = Category.objects(id=category_id).first()
+
+            if not category:
+                return OrchestrationResult.failure(
+                        status_code=EnumResponseStatusCode.NOT_FOUND,
+                        message='Category does not exist.'
+                )
+            
+            if category.deleted == False:
+                return OrchestrationResult.failure(
+                    status_code=EnumResponseStatusCode.RESTORED_ALREADY,
+                    message='This category has been restored already.'
+                )
+            
+            category.deleted = False
+            category.deleted_at = None
+            category.save()
+
+            return OrchestrationResult.success(
+                data=parse_returned_category(category=category), 
+                message='Category restored successfully', 
+                status_code=EnumResponseStatusCode.RESTORED_SUCCESSFULLY
             )
         except Exception as exc:
             print(exc)
