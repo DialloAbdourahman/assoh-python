@@ -48,12 +48,29 @@ async def find_users(
 
 
 @router.delete('/{user_id}', status_code=status.HTTP_200_OK, response_model=OrchestrationResultType[UserResponseModel])
-async def create_account(
+async def delete_account(
     response: Response, 
     user_id:str = Path(),
     user_info: UserInfoInToken = Depends(validate_roles([EnumUserRole.ADMIN.value]))
 ):
     result: OrchestrationResultType[UserResponseModel] = await AdminService.delete_account(user_id, user_info)
+
+    if result.get('code') == EnumResponseCode.FAILED.value:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+
+    if result.get('code') == EnumResponseCode.SERVER_ERROR.value:
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR    
+    
+    return result
+
+@router.put('/{user_id}/change-user-role', status_code=status.HTTP_200_OK, response_model=OrchestrationResultType[UserResponseModel])
+async def change_user_role(
+    response: Response, 
+    user_id:str = Path(),
+    role: EnumUserRole = Query(),
+    user_info: UserInfoInToken = Depends(validate_roles([EnumUserRole.ADMIN.value]))
+):
+    result: OrchestrationResultType[UserResponseModel] = await AdminService.change_user_role(user_id, role, user_info)
 
     if result.get('code') == EnumResponseCode.FAILED.value:
         response.status_code = status.HTTP_400_BAD_REQUEST

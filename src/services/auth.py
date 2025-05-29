@@ -1,5 +1,4 @@
 from models.address import Address
-from dto.request.address import AddressDto
 from dto.request.user import CreateUserRequestDto, LoginUserRequestDto, UpdateUserRequestDto
 from dto.response.user import UserResponseModel, LoginResponseModel
 from dto.response.user import parse_returned_user, parse_returned_logged_in_user
@@ -9,7 +8,7 @@ from utils.orchestration_result import OrchestrationResult, OrchestrationResultT
 from utils.password_utils import PasswordUtils
 from utils.token_utils import TokenUtils
 from utils_types.user_info_in_token import UserInfoInToken
-
+from datetime import datetime
 class AuthService:
     @staticmethod
     async def create_account(data:CreateUserRequestDto) -> OrchestrationResultType[UserResponseModel]:
@@ -108,6 +107,7 @@ class AuthService:
             
             user.fullname = data.fullname or user.fullname
             user.address = Address(**data.address.model_dump()) if data.address else user.address
+            user.updated_at = datetime.utcnow()
             
             user.save()
 

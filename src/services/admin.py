@@ -2,6 +2,7 @@ import math
 from dto.response.user import UserResponseModel, parse_returned_paginated_users
 from dto.response.user import parse_returned_user
 from enums.response_codes import EnumResponseStatusCode
+from enums.user_role_enum import EnumUserRole
 from models.user import User
 from utils.orchestration_result import OrchestrationResult, OrchestrationResultType
 from datetime import datetime
@@ -114,6 +115,43 @@ class AdminService:
                 ), 
                 message='Account deleted successfully', 
                 status_code=EnumResponseStatusCode.RECOVERED_SUCCESSFULLY
+            )
+        except Exception as exc:
+            print(exc)
+            return OrchestrationResult.server_error()
+        
+    @staticmethod
+    async def change_user_role(user_id:str, role:EnumUserRole, user_info:UserInfoInToken) -> OrchestrationResultType[UserResponseModel]:
+        try:
+            user: User = User.objects(id=user_id, deleted=False).first()
+
+            if user is None:
+                return OrchestrationResult.failure(
+                        status_code=EnumResponseStatusCode.NOT_FOUND,
+                        message='User does not exist.'
+                )
+            
+            if user.role == role:
+                return OrchestrationResult.failure(
+                    status_code=EnumResponseStatusCode.USER_HAS_THIS_ROLE_ALREADY,
+                    message='This user has this role already.'
+                )
+                        
+            if str(user.id) == user_info.id:
+                return OrchestrationResult.failure(
+                    status_code=EnumResponseStatusCode.CANNOT_CHANGE_YOUR_OWN_ROLE,
+                    message='You cannot change your own role.'
+                )
+
+            user.role = role.value
+            user.updated_at = datetime.utcnow()               
+            
+            user.save()
+
+            return OrchestrationResult.success(
+                data=parse_returned_user(user), 
+                message='Account deleted successfully', 
+                status_code=EnumResponseStatusCode.UPDATED_SUCCESSFULLY
             )
         except Exception as exc:
             print(exc)
