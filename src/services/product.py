@@ -18,7 +18,7 @@ class ProductService:
     @staticmethod
     async def create_product(data:CreateProductDto, user_info:UserInfoInToken) -> OrchestrationResultType[ProductResponseModel]:
         try:
-            seller = User.objects(id=user_info.id, deleted=False).first()
+            seller = User.objects(id=user_info.id, role=user_info.role, deleted=False).first()
 
             if not seller:
                 return OrchestrationResult.unauthorized(
