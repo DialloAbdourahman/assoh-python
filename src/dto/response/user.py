@@ -12,7 +12,8 @@ class UserResponseModel(BaseModel):
     address: Optional[AddressResponseModel] = None
     role: str
     created_at: str
-
+    updated_at: Optional[str]
+    deleted_at: Optional[str]
 class LoginResponseModel(BaseModel):
     user: UserResponseModel
     access_token: str 
@@ -26,19 +27,14 @@ def parse_returned_user(user: User):
         email = user.email, 
         address = parse_returned_address(user.address) if user.address else None,
         role = user.role,
-        created_at = str(user.created_at)
+        created_at = str(user.created_at),
+        updated_at = str(user.updated_at) if user.updated_at else None,
+        deleted_at = str(user.deleted_at) if user.deleted_at else None    
     )
 
 def parse_returned_users(users: list[User]):
     return [
-        UserResponseModel(
-            id = str(item.id),
-            fullname = item.fullname, 
-            email = item.email, 
-            address = parse_returned_address(item.address) if item.address else None,
-            role = item.role,
-            created_at = str(item.created_at)
-        ) for item in users
+        parse_returned_user(user=user) for user in users
     ]
 
 def parse_returned_logged_in_user(user: User, access_token: str, refresh_token: str = None) -> LoginResponseModel:
