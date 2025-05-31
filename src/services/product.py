@@ -4,18 +4,12 @@ import math
 from bson import ObjectId
 from dto.request.product import CreateProductDto, UpdateProductDto
 from dto.response.paginated import Paginated
-from dto.response.product import ProductResponseModel, parse_returned_paginated_products, parse_returned_product
-from models.address import Address
-from dto.request.user import CreateUserRequestDto, LoginUserRequestDto, UpdateUserRequestDto
-from dto.response.user import UserResponseModel, LoginResponseModel
-from dto.response.user import parse_returned_user, parse_returned_logged_in_user
+from dto.response.product import ProductResponseModel, ProductResponseParser
 from enums.response_codes import EnumResponseStatusCode
 from models.category import Category
 from models.product import Product
 from models.user import User
 from utils.orchestration_result import OrchestrationResult, OrchestrationResultType
-from utils.password_utils import PasswordUtils
-from utils.token_utils import TokenUtils
 from utils_types.user_info_in_token import UserInfoInToken
 from datetime import datetime
 from mongoengine import Q
@@ -50,7 +44,7 @@ class ProductService:
             product.save()
 
             return OrchestrationResult.success(
-                data=parse_returned_product(product), 
+                data=ProductResponseParser.parse(product), 
                 message='Product created successfully', 
                 status_code=EnumResponseStatusCode.CREATED_SUCCESSFULLY
             )
@@ -58,67 +52,6 @@ class ProductService:
             print(exc)
             return OrchestrationResult.server_error()
         
-    @staticmethod
-    async def search_product(
-        page:int,
-        limit:int,
-        product_name: str,
-        seller_id: str,
-        category_id: str,
-        min_price: float,
-        max_price: float,
-    ) -> OrchestrationResultType[Paginated[ProductResponseModel]]:
-        try:
-            filter_query = Q(deleted=False)
-
-            if seller_id is not None:
-                seller = User.objects(id=seller_id, deleted=False).first()
-                if not seller:
-                    return OrchestrationResult.unauthorized(
-                        status_code=EnumResponseStatusCode.SELLER_NOT_FOUND,
-                        message='Seller does not exist'
-                )
-                filter_query &= Q(seller=seller)
-
-            if category_id is not None:
-                category = Category.objects(id=category_id, deleted=False).first()
-                if not category:
-                    return OrchestrationResult.unauthorized(
-                        status_code=EnumResponseStatusCode.CATEGORY_NOT_FOUND,
-                        message='Category does not exist'
-                    )
-                filter_query &= Q(category=category)
-
-            if product_name is not None:
-                filter_query &= Q(name__icontains=product_name)
-
-            if min_price is not None:
-                filter_query &= Q(price__gte=min_price)
-
-            if max_price is not None:
-                filter_query &= Q(price__lte=max_price)
-
-            skip = (page - 1) * limit
-            total_items = Product.objects(filter_query).count()
-            total_pages = math.ceil(total_items / limit)
-
-            products: list[Product] = Product.objects(filter_query).skip(skip).limit(limit)
-
-            return OrchestrationResult.success(
-                data=parse_returned_paginated_products(
-                    products=products,
-                    total_pages=total_pages,
-                    limit=limit,
-                    page=page,
-                    total_items=total_items
-                ), 
-                message='Recovered successfully successfully', 
-                status_code=EnumResponseStatusCode.RECOVERED_SUCCESSFULLY
-            )
-        except Exception as exc:
-            print(exc)
-            return OrchestrationResult.server_error()
-
     # @staticmethod
     # async def search_product(
     #     page:int,
@@ -130,96 +63,43 @@ class ProductService:
     #     max_price: float,
     # ) -> OrchestrationResultType[Paginated[ProductResponseModel]]:
     #     try:
-    #         initial_match_query = {
-    #             "deleted": False,
-    #         }
-    #         if seller_id:
-    #             initial_match_query['seller'] = ObjectId(seller_id)
-    #         if category_id:
-    #             initial_match_query['category'] = ObjectId(category_id)
-    #         if min_price:
-    #             initial_match_query['price'] = {"$gte": min_price}
-    #         if max_price:
-    #             initial_match_query['price'] = {"$lte":max_price}
-    #         if product_name:
-    #             initial_match_query['name'] = {
-    #                 "$regex": product_name,
-    #                 "$options": "i"
-    #             }
+    #         filter_query = Q(deleted=False)
 
-    #         deleted_match_query = {}
-    #         if seller_id:
-    #             deleted_match_query['seller.deleted'] = False
-    #         if category_id:
-    #             deleted_match_query['category.deleted'] = False
+    #         if seller_id is not None:
+    #             seller = User.objects(id=seller_id, deleted=False).first()
+    #             if not seller:
+    #                 return OrchestrationResult.unauthorized(
+    #                     status_code=EnumResponseStatusCode.SELLER_NOT_FOUND,
+    #                     message='Seller does not exist'
+    #             )
+    #             filter_query &= Q(seller=seller)
+
+    #         if category_id is not None:
+    #             category = Category.objects(id=category_id, deleted=False).first()
+    #             if not category:
+    #                 return OrchestrationResult.unauthorized(
+    #                     status_code=EnumResponseStatusCode.CATEGORY_NOT_FOUND,
+    #                     message='Category does not exist'
+    #                 )
+    #             filter_query &= Q(category=category)
+
+    #         if product_name is not None:
+    #             filter_query &= Q(name__icontains=product_name)
+
+    #         if min_price is not None:
+    #             filter_query &= Q(price__gte=min_price)
+
+    #         if max_price is not None:
+    #             filter_query &= Q(price__lte=max_price)
 
     #         skip = (page - 1) * limit
-
-    #         pipeline = [
-    #             {
-    #                 "$match": initial_match_query
-    #             },
-    #             {
-    #                 "$lookup": {
-    #                     "from": "category",
-    #                     "localField": "category",
-    #                     "foreignField": "_id",
-    #                     "as": "category"
-    #                 }
-    #             },
-    #             {
-    #                 "$unwind": "$category"
-    #             },
-    #             {
-    #                 "$lookup": {
-    #                     "from": "user",
-    #                     "localField": "seller",
-    #                     "foreignField": "_id",
-    #                     "as": "seller"
-    #                 }
-    #             },
-    #             {
-    #                 "$unwind": "$seller"
-    #             },
-    #             {
-    #                 "$match": deleted_match_query
-    #             },
-    #             {
-    #                 "$set": {
-    #                     "category.id": { "$toString": "$category._id" },
-    #                     "seller.id": { "$toString": "$seller._id" },
-    #                     "id": { "$toString": "$_id" },
-    #                 }
-    #             },
-    #             {
-    #                 "$unset": ["seller._id", "category._id", "_id"]
-    #             }
-    #         ]
-
-    #         count_pipeline = pipeline.copy()
-    #         pipeline.extend(
-    #             [
-    #                 {
-    #                     "$skip": skip
-    #                 },
-    #                 {
-    #                     "$limit": limit
-    #                 }
-    #             ]
-    #         )
-    #         count_pipeline.append({"$count": "total"})
-
-    #         products: list[dict] = list(Product.objects.aggregate(*pipeline))
-    #         count_result = list(Product.objects.aggregate(*count_pipeline))
-            
-    #         print(f'pipeline {pipeline}')
-    #         print(f'count pipeline {count_pipeline}')
-            
-    #         total_items = count_result[0]["total"] if count_result else 0            
+    #         total_items = Product.objects(filter_query).count()
     #         total_pages = math.ceil(total_items / limit)
 
+    #         products: list[Product] = Product.objects(filter_query).skip(skip).limit(limit)
+
     #         return OrchestrationResult.success(
-    #             data=parse_returned_paginated_products(
+    #             data=ProductResponseParser.parse_paginated(
     #                 products=products,
     #                 total_pages=total_pages,
     #                 limit=limit,
@@ -232,6 +112,120 @@ class ProductService:
     #     except Exception as exc:
     #         print(exc)
     #         return OrchestrationResult.server_error()
+
+    @staticmethod
+    async def search_product(
+        page:int,
+        limit:int,
+        product_name: str,
+        seller_id: str,
+        category_id: str,
+        min_price: float,
+        max_price: float,
+    ) -> OrchestrationResultType[Paginated[ProductResponseModel]]:
+        try:
+            initial_match_query = {
+                "deleted": False,
+            }
+            if seller_id:
+                initial_match_query['seller'] = ObjectId(seller_id)
+            if category_id:
+                initial_match_query['category'] = ObjectId(category_id)
+            if min_price:
+                initial_match_query['price'] = {"$gte": min_price}
+            if max_price:
+                initial_match_query['price'] = {"$lte":max_price}
+            if product_name:
+                initial_match_query['name'] = {
+                    "$regex": product_name,
+                    "$options": "i"
+                }
+
+            deleted_match_query = {}
+            if seller_id:
+                deleted_match_query['seller.deleted'] = False
+            if category_id:
+                deleted_match_query['category.deleted'] = False
+
+            skip = (page - 1) * limit
+
+            pipeline = [
+                {
+                    "$match": initial_match_query
+                },
+                {
+                    "$lookup": {
+                        "from": "category",
+                        "localField": "category",
+                        "foreignField": "_id",
+                        "as": "category"
+                    }
+                },
+                {
+                    "$unwind": "$category"
+                },
+                {
+                    "$lookup": {
+                        "from": "user",
+                        "localField": "seller",
+                        "foreignField": "_id",
+                        "as": "seller"
+                    }
+                },
+                {
+                    "$unwind": "$seller"
+                },
+                {
+                    "$match": deleted_match_query
+                },
+                {
+                    "$set": {
+                        "category.id": { "$toString": "$category._id" },
+                        "seller.id": { "$toString": "$seller._id" },
+                        "id": { "$toString": "$_id" },
+                    }
+                },
+                {
+                    "$unset": ["seller._id", "category._id", "_id"]
+                }
+            ]
+
+            count_pipeline = pipeline.copy()
+            pipeline.extend(
+                [
+                    {
+                        "$skip": skip
+                    },
+                    {
+                        "$limit": limit
+                    }
+                ]
+            )
+            count_pipeline.append({"$count": "total"})
+
+            products: list[dict] = list(Product.objects.aggregate(*pipeline))
+            count_result = list(Product.objects.aggregate(*count_pipeline))
+            
+            print(f'pipeline {pipeline}')
+            print(f'count pipeline {count_pipeline}')
+            
+            total_items = count_result[0]["total"] if count_result else 0            
+            total_pages = math.ceil(total_items / limit)
+
+            return OrchestrationResult.success(
+                data=ProductResponseParser.parse_paginated(
+                    products=products,
+                    total_pages=total_pages,
+                    limit=limit,
+                    page=page,
+                    total_items=total_items
+                ), 
+                message='Recovered successfully successfully', 
+                status_code=EnumResponseStatusCode.RECOVERED_SUCCESSFULLY
+            )
+        except Exception as exc:
+            print(exc)
+            return OrchestrationResult.server_error()
         
     @staticmethod
     async def delete_product(product_id:str, user_info:UserInfoInToken) -> OrchestrationResultType[ProductResponseModel]:
@@ -263,7 +257,7 @@ class ProductService:
             product.save()
 
             return OrchestrationResult.success(
-                data=parse_returned_product(product), 
+                data=ProductResponseParser.parse(product), 
                 message='Product deleted successfully', 
                 status_code=EnumResponseStatusCode.DELETED_SUCCESSFULLY
             )
@@ -300,7 +294,7 @@ class ProductService:
             product.save()
 
             return OrchestrationResult.success(
-                data=parse_returned_product(product), 
+                data=ProductResponseParser.parse(product), 
                 message='Product deleted successfully', 
                 status_code=EnumResponseStatusCode.RESTORED_SUCCESSFULLY
             )
@@ -347,7 +341,7 @@ class ProductService:
             product.save()
 
             return OrchestrationResult.success(
-                data=parse_returned_product(product), 
+                data=ProductResponseParser.parse(product), 
                 message='Product updated successfully', 
                 status_code=EnumResponseStatusCode.UPDATED_SUCCESSFULLY
             )

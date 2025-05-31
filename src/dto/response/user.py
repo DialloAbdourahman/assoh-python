@@ -1,8 +1,8 @@
 from pydantic import BaseModel, EmailStr
 
 from dto.response.paginated import Paginated
-from .address import AddressResponseModel, parse_returned_address
-from typing import Optional
+from .address import AddressResponseModel, AddressResponseParser
+from typing import Optional, Union
 from models.user import User
 
 class UserResponseModel(BaseModel):
@@ -19,42 +19,47 @@ class LoginResponseModel(BaseModel):
     access_token: str 
     refresh_token: str 
 
+class UserResponseParser:
+    @staticmethod
+    def parse(user: Union[User, dict]) -> UserResponseModel:
+        is_dict = isinstance(user, dict)
+        data = user if is_dict else user.to_mongo().to_dict()
+        
+        return UserResponseModel(
+            id=str(data.get("id") or data.get("_id")),
+            fullname=data.get("fullname"),
+            email=data.get("email"),
+            address=AddressResponseParser.parse(data.get("address")) if data.get("address") else None,
+            role=data.get("role"),
+            created_at=str(data.get("created_at")),
+            updated_at=str(data.get("updated_at")) if data.get("updated_at") else None,
+            deleted_at=str(data.get("deleted_at")) if data.get("deleted_at") else None    
+        )
 
-def parse_returned_user(user: User):
-    return UserResponseModel(
-        id = str(user.id),
-        fullname = user.fullname, 
-        email = user.email, 
-        address = parse_returned_address(user.address) if user.address else None,
-        role = user.role,
-        created_at = str(user.created_at),
-        updated_at = str(user.updated_at) if user.updated_at else None,
-        deleted_at = str(user.deleted_at) if user.deleted_at else None    
-    )
+    @staticmethod
+    def parse_list(users: list[Union[User, dict]]) -> list[UserResponseModel]:
+        return [UserResponseParser.parse(user) for user in users]
 
-def parse_returned_users(users: list[User]):
-    return [
-        parse_returned_user(user=user) for user in users
-    ]
-
-def parse_returned_logged_in_user(user: User, access_token: str, refresh_token: str = None) -> LoginResponseModel:
-    return LoginResponseModel(
-        user = parse_returned_user(user),
-        access_token =  access_token, 
-        refresh_token = refresh_token if refresh_token else 'Coming soon'
-    )
-
-def parse_returned_paginated_users(
-        users: list[User],
+    @staticmethod
+    def parse_paginated(
+        users: list[Union[User, dict]],
         limit: int,
         page: int,
         total_items: int,
         total_pages: int
-    ):
-    return Paginated[UserResponseModel](
-        items= parse_returned_users(users),
-        limit=limit,
-        page=page,
-        total_items=total_items,
-        total_pages=total_pages
-    )
+    ) -> Paginated[list[UserResponseModel]]:
+        return Paginated[UserResponseModel](
+            items=UserResponseParser.parse_list(users),
+            limit=limit,
+            page=page,
+            total_items=total_items,
+            total_pages=total_pages
+        )
+    
+    def parse_logged_in_user(user: User, access_token: str, refresh_token: str = None) -> LoginResponseModel:
+        return LoginResponseModel(
+            user = UserResponseParser.parse(user),
+            access_token =  access_token, 
+            refresh_token = refresh_token if refresh_token else 'Coming soon'
+        )
+

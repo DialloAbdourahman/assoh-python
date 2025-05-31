@@ -1,7 +1,7 @@
 from models.address import Address
 from dto.request.user import CreateUserRequestDto, LoginUserRequestDto, UpdateUserRequestDto
 from dto.response.user import UserResponseModel, LoginResponseModel
-from dto.response.user import parse_returned_user, parse_returned_logged_in_user
+from dto.response.user import UserResponseParser
 from enums.response_codes import EnumResponseStatusCode
 from models.user import User
 from utils.orchestration_result import OrchestrationResult, OrchestrationResultType
@@ -31,7 +31,7 @@ class AuthService:
             user.save()
 
             return OrchestrationResult.success(
-                data=parse_returned_user(user), 
+                data=UserResponseParser.parse(user), 
                 message='Account created successfully', 
                 status_code=EnumResponseStatusCode.CREATED_SUCCESSFULLY
             )
@@ -65,7 +65,7 @@ class AuthService:
             access_token = TokenUtils.create_access_token(user=found_user)
 
             return OrchestrationResult.success(
-                data=parse_returned_logged_in_user(user=found_user,
+                data=UserResponseParser.parse_logged_in_user(user=found_user,
                 access_token=access_token), 
                 message='Logged in successfully', 
                 status_code=EnumResponseStatusCode.RECOVERED_SUCCESSFULLY
@@ -86,7 +86,7 @@ class AuthService:
                 )
 
             return OrchestrationResult.success(
-                data=parse_returned_user(found_user), 
+                data=UserResponseParser.parse(found_user), 
                 message='Profile retrieved successfully', 
                 status_code=EnumResponseStatusCode.RECOVERED_SUCCESSFULLY
             )
@@ -112,7 +112,7 @@ class AuthService:
             user.save()
 
             return OrchestrationResult.success(
-                data=parse_returned_user(user), 
+                data=UserResponseParser.parse(user), 
                 message='Account updated successfully', 
                 status_code=EnumResponseStatusCode.UPDATED_SUCCESSFULLY
             )

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Union
 from models.address import Address 
 
 class AddressResponseModel(BaseModel):
@@ -9,11 +9,17 @@ class AddressResponseModel(BaseModel):
     street_number: Optional[str] 
     postal_code : Optional[str] 
 
-def parse_returned_address(address: Address):
-    return AddressResponseModel(
-        country= address.country, 
-        city= address.city,
-        street_name= address.street_name,
-        street_number= address.street_number,
-        postal_code = address.postal_code,
-    )
+
+class AddressResponseParser:
+    @staticmethod
+    def parse(address: Union[Address, dict]) -> AddressResponseModel:
+        is_dict = isinstance(address, dict)
+        data = address if is_dict else address.to_mongo().to_dict()
+        
+        return AddressResponseModel(
+            country=data.get("country"),
+            city=data.get("city"),
+            street_name=data.get("street_name"),
+            street_number=data.get("street_number"),
+            postal_code=data.get("postal_code"),
+        )

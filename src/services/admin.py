@@ -1,8 +1,8 @@
 import math
 from dto.request.category import CreateCategoryDto, UpdateCategoryDto
-from dto.response.category import CategoryResponseModel, parse_returned_categories, parse_returned_category
-from dto.response.user import UserResponseModel, parse_returned_paginated_users
-from dto.response.user import parse_returned_user
+from dto.response.category import CategoryResponseModel, CategoryResponseParser
+from dto.response.user import UserResponseModel, UserResponseParser 
+from dto.response.user import UserResponseParser 
 from enums.response_codes import EnumResponseStatusCode
 from enums.user_role_enum import EnumUserRole
 from models.category import Category
@@ -43,7 +43,7 @@ class AdminService:
             user.save()
 
             return OrchestrationResult.success(
-                data=parse_returned_user(user), 
+                data=UserResponseParser.parse(user), 
                 message='Account deleted successfully', 
                 status_code=EnumResponseStatusCode.DELETED_SUCCESSFULLY
             )
@@ -80,7 +80,7 @@ class AdminService:
             user.save()
 
             return OrchestrationResult.success(
-                data=parse_returned_user(user), 
+                data=UserResponseParser.parse(user), 
                 message='Account deleted successfully', 
                 status_code=EnumResponseStatusCode.RESTORED_SUCCESSFULLY
             )
@@ -109,7 +109,7 @@ class AdminService:
             users: list[User] = User.objects(filters).skip(skip).limit(limit)
 
             return OrchestrationResult.success(
-                data=parse_returned_paginated_users(
+                data=UserResponseParser.parse_paginated(
                     users=users,
                     total_pages=total_pages,
                     limit=limit,
@@ -152,7 +152,7 @@ class AdminService:
             user.save()
 
             return OrchestrationResult.success(
-                data=parse_returned_user(user), 
+                data=UserResponseParser.parse(user), 
                 message='Account deleted successfully', 
                 status_code=EnumResponseStatusCode.UPDATED_SUCCESSFULLY
             )
@@ -167,7 +167,7 @@ class AdminService:
             category.save()
 
             return OrchestrationResult.success(
-                data=parse_returned_category(category=category), 
+                data=CategoryResponseParser.parse(category=category), 
                 message='Category created successfully', 
                 status_code=EnumResponseStatusCode.CREATED_SUCCESSFULLY
             )
@@ -191,7 +191,7 @@ class AdminService:
             category.save()
 
             return OrchestrationResult.success(
-                data=parse_returned_category(category=category), 
+                data=CategoryResponseParser.parse(category=category), 
                 message='Category updated successfully', 
                 status_code=EnumResponseStatusCode.UPDATED_SUCCESSFULLY
             )
@@ -221,7 +221,7 @@ class AdminService:
             category.save()
 
             return OrchestrationResult.success(
-                data=parse_returned_category(category=category), 
+                data=CategoryResponseParser.parse(category=category), 
                 message='Category deleted successfully', 
                 status_code=EnumResponseStatusCode.DELETED_SUCCESSFULLY
             )
@@ -251,7 +251,7 @@ class AdminService:
             category.save()
 
             return OrchestrationResult.success(
-                data=parse_returned_category(category=category), 
+                data=CategoryResponseParser.parse(category=category), 
                 message='Category restored successfully', 
                 status_code=EnumResponseStatusCode.RESTORED_SUCCESSFULLY
             )

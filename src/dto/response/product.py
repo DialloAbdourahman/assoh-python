@@ -1,11 +1,11 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
-from dto.response.category import CategoryResponseModel, parse_returned_category
+from dto.response.category import CategoryResponseModel, CategoryResponseParser
 from dto.response.paginated import Paginated
-from dto.response.user import UserResponseModel, parse_returned_user
-from .address import AddressResponseModel, parse_returned_address
+from dto.response.user import UserResponseModel, UserResponseParser
 from typing import Optional
 from models.product import Product
+from typing import Union
 
 class ProductResponseModel(BaseModel):
     id: str
@@ -13,61 +13,51 @@ class ProductResponseModel(BaseModel):
     description: str 
     price: float
     profile: Optional[str] = None
-
     seller: UserResponseModel
     category: CategoryResponseModel
-
     created_at: str
     updated_at: Optional[str]
     deleted_at: Optional[str]
+class ProductResponseParser:
+    @staticmethod
+    def parse(product: Union[Product, dict]) -> ProductResponseModel:
+        is_dict = isinstance(product, dict)
+        data = product if is_dict else product.to_mongo().to_dict()
 
+        return ProductResponseModel(
+            id=str(data.get("id") or data.get("_id")),
+            name=data.get("name"),
+            description=data.get("description"),
+            price=data.get("price"),
+            picture=data.get("picture") if data.get("picture") else None,
 
-def parse_returned_product(product: Product):
-    return ProductResponseModel(
-        id = str(product.id),
-        name = product.name, 
-        description = product.description, 
-        price = product.price,
-        picture = product.picture if product.picture else None,
+            seller=UserResponseParser.parse(data.get("seller")) if is_dict
+                   else UserResponseParser.parse(product.seller),
 
-        seller = parse_returned_user(product.seller),
-        category= parse_returned_category(product.category),
+            category=CategoryResponseParser.parse(data.get("category")) if is_dict
+                     else CategoryResponseParser.parse(product.category),
 
-        created_at = str(product.created_at),
-        updated_at = str(product.updated_at) if product.updated_at else None,
-        deleted_at = str(product.deleted_at) if product.deleted_at else None
-    )
+            created_at=str(data.get("created_at")),
+            updated_at=str(data.get("updated_at")) if data.get("updated_at") else None,
+            deleted_at=str(data.get("deleted_at")) if data.get("deleted_at") else None
+        )
 
-# def parse_returned_product(product: dict) -> ProductResponseModel:
-#     return ProductResponseModel(
-#         id = product.get('id'),
-#         name = product.get('name'),
-#         description = product.get('description'),
-#         price = product.get('price'),
-#         picture = product.get('picture') if product.get('picture') else None,
-#         # seller = parse_returned_user(product.get('seller')),
-#         # category = parse_returned_category(product.get('category')),
-#         created_at = str(product.get('created_at')),
-#         updated_at = str(product.get('updated_at')) if product.get('updated_at') else None,
-#         deleted_at = str(product.get('deleted_at')) if product.get('deleted_at') else None
-#     )
+    @staticmethod
+    def parse_list(products: list[Union[Product, dict]]) -> list[ProductResponseModel]:
+        return [ProductResponseParser.parse(product) for product in products]
 
-def parse_returned_products(products: list[Product]):
-    return [
-        parse_returned_product(product) for product in products
-    ]
-
-def parse_returned_paginated_products(
-        products: list[Product],
+    @staticmethod
+    def parse_paginated(
+        products: list[Union[Product, dict]],
         limit: int,
         page: int,
         total_items: int,
         total_pages: int
-    ):
-    return Paginated[ProductResponseModel](
-        items= parse_returned_products(products),
-        limit=limit,
-        page=page,
-        total_items=total_items,
-        total_pages=total_pages
-    )
+    ) -> Paginated[ProductResponseModel]:
+        return Paginated[ProductResponseModel](
+            items=ProductResponseParser.parse_list(products),
+            limit=limit,
+            page=page,
+            total_items=total_items,
+            total_pages=total_pages
+        )

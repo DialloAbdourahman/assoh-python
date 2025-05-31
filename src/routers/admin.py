@@ -13,7 +13,7 @@ from utils_types.user_info_in_token import UserInfoInToken
 
 router = APIRouter(tags=['Administration'], prefix='/admin')
 
-@router.post('/{user_id}/restore', status_code=status.HTTP_200_OK, response_model=OrchestrationResultType[UserResponseModel])
+@router.post('/users/{user_id}/restore', status_code=status.HTTP_200_OK, response_model=OrchestrationResultType[UserResponseModel])
 async def restore_account(
     response: Response, 
     user_id:str = Path(),
@@ -49,7 +49,7 @@ async def find_users(
     return result
 
 
-@router.delete('/{user_id}', status_code=status.HTTP_200_OK, response_model=OrchestrationResultType[UserResponseModel])
+@router.delete('/users/{user_id}', status_code=status.HTTP_200_OK, response_model=OrchestrationResultType[UserResponseModel])
 async def delete_account(
     response: Response, 
     user_id:str = Path(),
@@ -65,7 +65,7 @@ async def delete_account(
     
     return result
 
-@router.put('/{user_id}/change-user-role', status_code=status.HTTP_200_OK, response_model=OrchestrationResultType[UserResponseModel])
+@router.put('/users/{user_id}/change-user-role', status_code=status.HTTP_200_OK, response_model=OrchestrationResultType[UserResponseModel])
 async def change_user_role(
     response: Response, 
     user_id:str = Path(),
