@@ -106,7 +106,7 @@ class AdminService:
             total_items = User.objects(filters).count()
             total_pages = math.ceil(total_items / limit)
 
-            users: User = User.objects(filters).skip(skip).limit(limit)
+            users: list[User] = User.objects(filters).skip(skip).limit(limit)
 
             return OrchestrationResult.success(
                 data=parse_returned_paginated_users(
@@ -116,7 +116,7 @@ class AdminService:
                     page=page,
                     total_items=total_items
                 ), 
-                message='Account deleted successfully', 
+                message='Recovered successfully successfully', 
                 status_code=EnumResponseStatusCode.RECOVERED_SUCCESSFULLY
             )
         except Exception as exc:

@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import Field, BaseModel
 
 class CreateProductDto(BaseModel):
@@ -5,3 +6,9 @@ class CreateProductDto(BaseModel):
     description: str = Field(max_length=100)
     price: float = Field(min=0)
     category_id:str = Field()
+
+class UpdateProductDto(BaseModel):
+    name: Optional[str] = Field(min_length=5, max_length=20, default=None)
+    description: Optional[str] = Field(max_length=100, default=None)
+    price: float = Field(min=0, default=None)
+    category_id:Optional[str] = Field(default=None)

@@ -1,4 +1,4 @@
-from pydantic import Field, BaseModel
+from pydantic import BaseModel
 from typing import Optional
 from models.address import Address 
 

@@ -38,6 +38,20 @@ def parse_returned_product(product: Product):
         deleted_at = str(product.deleted_at) if product.deleted_at else None
     )
 
+# def parse_returned_product(product: dict) -> ProductResponseModel:
+#     return ProductResponseModel(
+#         id = product.get('id'),
+#         name = product.get('name'),
+#         description = product.get('description'),
+#         price = product.get('price'),
+#         picture = product.get('picture') if product.get('picture') else None,
+#         # seller = parse_returned_user(product.get('seller')),
+#         # category = parse_returned_category(product.get('category')),
+#         created_at = str(product.get('created_at')),
+#         updated_at = str(product.get('updated_at')) if product.get('updated_at') else None,
+#         deleted_at = str(product.get('deleted_at')) if product.get('deleted_at') else None
+#     )
+
 def parse_returned_products(products: list[Product]):
     return [
         parse_returned_product(product) for product in products
