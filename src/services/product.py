@@ -38,6 +38,7 @@ class ProductService:
                 name = data.name,
                 description = data.description,
                 price = data.price,
+                quantity = data.quantity,
                 seller = seller,
                 category = category
             )
@@ -327,6 +328,9 @@ class ProductService:
 
             if data.price is not None:
                 product.price = data.price
+
+            if data.quantity is not None:
+                product.quantity = data.quantity
 
             if data.category_id is not None:
                 category: Category = Category.objects(id=data.category_id, deleted=False).first()

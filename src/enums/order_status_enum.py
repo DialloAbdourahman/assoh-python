@@ -1,0 +1,7 @@
+from enum import Enum
+
+class EnumOrderStatus(Enum):
+    CREATED = "CREATED"
+    PAID = "PAID"
+    PAYMENT_ERROR = "PAYMENT_ERROR"
+    CANCELLED = "CANCELLED"

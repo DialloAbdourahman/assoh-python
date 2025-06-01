@@ -12,7 +12,7 @@ class CategoryResponseModel(BaseModel):
 
 class CategoryResponseParser:
     @staticmethod
-    def parse(category: Union[Category, dict], private: bool = False) -> CategoryResponseModel:
+    def parse(category: Union[Category, dict]) -> CategoryResponseModel:
         is_dict = isinstance(category, dict)
         data = category if is_dict else category.to_mongo().to_dict()
         

@@ -12,7 +12,8 @@ class ProductResponseModel(BaseModel):
     name: str 
     description: str 
     price: float
-    profile: Optional[str] = None
+    quantity: int
+    picture: Optional[str] = None
     seller: UserResponseModel
     category: CategoryResponseModel
     created_at: str
@@ -29,6 +30,7 @@ class ProductResponseParser:
             name=data.get("name"),
             description=data.get("description"),
             price=data.get("price"),
+            quantity=data.get("quantity"),
             picture=data.get("picture") if data.get("picture") else None,
 
             seller=UserResponseParser.parse(data.get("seller")) if is_dict

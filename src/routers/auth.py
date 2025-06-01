@@ -58,8 +58,4 @@ async def update_account(response: Response, user_info:user_info_dependency, use
     
     return result
 
-# @router.get('/test-validate-role', status_code=status.HTTP_200_OK)
-# async def test_validate_role(response: Response,  user_info: UserInfoInToken = Depends(validate_roles([EnumUserRole.SELLER.value]))):
-#     return 'Authorized'
-
 
