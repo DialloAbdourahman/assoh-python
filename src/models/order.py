@@ -9,3 +9,4 @@ class Order(BaseModel):
     client = ReferenceField(User, required=True)
     status = StringField(choices=[e.value for e in EnumOrderStatus], required=True, default=EnumOrderStatus.CREATED.value)
     total = FloatField(required=True)
+    payment_intent_id = StringField(required=False)

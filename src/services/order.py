@@ -3,9 +3,6 @@ from typing import Optional
 from dto.response.order import OrderResponseModel, OrderResponseParser
 from dto.response.paginated import Paginated
 from enums.order_status_enum import EnumOrderStatus
-from models.address import Address
-from dto.request.user import CreateUserRequestDto, LoginUserRequestDto, UpdateUserRequestDto
-from dto.response.user import UserResponseModel, LoginResponseModel
 from dto.request.order import CreateOrderDto
 from enums.response_codes import EnumResponseStatusCode
 from models.order import Order
@@ -13,12 +10,10 @@ from models.ordered_product import OrderedProduct
 from models.product import Product
 from models.user import User
 from utils.orchestration_result import OrchestrationResult, OrchestrationResultType
-from utils.password_utils import PasswordUtils
-from utils.token_utils import TokenUtils
 from utils_types.user_info_in_token import UserInfoInToken
-from datetime import datetime
 from mongoengine import get_db, Q
-
+from stripe.checkout import Session
+from .stripe import StripeService
 class OrderService:
     @staticmethod
     async def create_order(user_info:UserInfoInToken, data:CreateOrderDto) -> OrchestrationResultType[OrderResponseModel]:
@@ -32,7 +27,6 @@ class OrderService:
                     )
 
             # Build the ordered products list 
-            print(f'Building the ordered products:: {data.products}')
             ordered_products: list[OrderedProduct] = []
 
             for product in data.products:
@@ -87,6 +81,11 @@ class OrderService:
                         product: Product = Product.objects(id=ordered_product.product.id, deleted=False).first()
                         product.quantity -= ordered_product.quantity
                         product.save(session=session)  # Use session-aware save
+
+            # Get the checkout url 
+            checkout_session: Session = StripeService.create_checkout_session(order=order)
+
+            print(f'Stripe url === {checkout_session.url}')
                 
             return OrchestrationResult.success(
                 data=OrderResponseParser.parse(order), 

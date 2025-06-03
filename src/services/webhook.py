@@ -1,0 +1,45 @@
+from mongoengine import get_db
+from enums.financial_line_status import EnumFinancialLineStatus
+from enums.order_status_enum import EnumOrderStatus
+from models.order import Order
+from models.ordered_product import OrderedProduct
+from models.financial_line import FinancialLine
+
+class WebhookService:
+    @staticmethod
+    def checkout_success(order_id:str, payment_intent_id:str):
+        if not order_id or not payment_intent_id:
+            raise ValueError("Missing order_id or payment_intent_id")
+
+        order: Order = Order.objects(id=order_id, deleted=False, status=EnumOrderStatus.CREATED.value).first()
+
+        if order is None:
+            raise ValueError("Order does not exist")
+        
+        products: list[OrderedProduct] = order.products
+
+        # Start a session and a transaction
+        with get_db().client.start_session() as session:
+            with session.start_transaction():
+                # Create a financial line for each product ordered
+                for product in products:
+                    financial_line = FinancialLine(
+                        seller=product.product.seller,
+                        product=product.product,
+                        status=EnumFinancialLineStatus.CREATED.value,
+                        price=product.price_at_order,
+                        quantity=product.quantity,
+                        order=order,
+                        total=product.price_at_order * product.quantity
+                    )
+                    financial_line.save(session=session)
+
+                # Update the order status
+                order.status = EnumOrderStatus.PAID.value
+                order.payment_intent_id = payment_intent_id
+                order.save(session=session)
+            
+
+
+        
+        
