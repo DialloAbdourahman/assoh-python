@@ -14,6 +14,8 @@ access_token_duration_in_minutes = os.getenv("ACCESS_TOKEN_DURATION_IN_MINUTES")
 stripe_secret_key = os.getenv('STRIPE_SECRET_KEY')
 stripe_webhook_key = os.getenv('STRIPE_WEBHOOK_KEY')
 
+refund_percentage = os.getenv('REFUND_PERCENTAGE')
+cancellation_period_in_minutes = os.getenv('CANCELLATION_PERIOD_IN_MINUTES')
 
 algorithm = os.getenv("ALGORITHM")
 

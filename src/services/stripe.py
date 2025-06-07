@@ -1,4 +1,4 @@
-from stripe import stripe
+from stripe import stripe, Refund
 from stripe.checkout import Session
 from utils.config import stripe_secret_key
 from models.order import Order
@@ -36,6 +36,14 @@ class StripeService:
         )
 
         return checkout_session
+    
+    @staticmethod
+    async def refund_client(payment_intent_id:str, amount_in_cents:float) -> str:
+        refund: Refund = await stripe.Refund.create_async(
+            payment_intent=payment_intent_id,
+            amount=amount_in_cents
+        )
 
+        return refund.id
         
 # stripe listen --forward-to localhost:8000/assoh/api/v1/webhook 

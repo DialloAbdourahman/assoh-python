@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import math
 from typing import Optional
 from dto.response.order import OrderResponseModel, OrderResponseParser
@@ -18,6 +19,8 @@ from utils_types.user_info_in_token import UserInfoInToken
 from mongoengine import get_db, Q
 from stripe.checkout import Session
 from .stripe import StripeService
+from utils.config import refund_percentage, cancellation_period_in_minutes
+
 class OrderService:
     @staticmethod
     async def create_order(user_info:UserInfoInToken, data:CreateOrderDto) -> OrchestrationResultType[OrderResponseModel]:
@@ -88,11 +91,9 @@ class OrderService:
 
             # Get the checkout url 
             checkout_session: Session = StripeService.create_checkout_session(order=order)
-
-            print(f'Stripe url === {checkout_session.url}')
                 
             return OrchestrationResult.success(
-                data=OrderResponseParser.parse(order), 
+                data=OrderResponseParser.parse(order=order,url=checkout_session.url), 
                 message='Order created successfully', 
                 status_code=EnumResponseStatusCode.CREATED_SUCCESSFULLY
             )
@@ -154,7 +155,7 @@ class OrderService:
                         message='Can only cancel pending orders'
                 )
             
-            cancellation_result: OrchestrationResultType[OrderResponseModel] = OrderService.remove_order_completely_and_set_status(order=order, status=EnumOrderStatus.CANCELLED)
+            cancellation_result: OrchestrationResultType[OrderResponseModel] = await OrderService.remove_order_completely_and_set_status(order=order, status=EnumOrderStatus.CANCELLED)
 
             return cancellation_result
         except Exception as exc: 
@@ -164,7 +165,6 @@ class OrderService:
     @staticmethod
     async def cancel_paid_order(user_info:UserInfoInToken, order_id:str):
         try:
-            # TODO: Add an env and make sure that we can only cancel a paid order just after 30 mins since it has been paid. (maybe use the paid at for that)
             order: Order = Order.objects(id=order_id, client=user_info.id).first()
 
             if not order:
@@ -178,8 +178,14 @@ class OrderService:
                         status_code=EnumResponseStatusCode.CAN_ONLY_CANCEL_PAID_ORDERS,
                         message='Can only cancel paid orders'
                 )
+
+            if not order.paid_at or datetime.utcnow() - order.paid_at > timedelta(minutes=int(cancellation_period_in_minutes)):
+                return OrchestrationResult.failure(
+                    status_code=EnumResponseStatusCode.CANNOT_CANCEL_AFTER_TIMEOUT,
+                    message=f'You can only cancel an order within {cancellation_period_in_minutes} minutes of payment.'
+                )
             
-            cancellation_result: OrchestrationResultType[OrderResponseModel] = OrderService.remove_order_completely_and_set_status(order=order, status=EnumOrderStatus.CANCELLED_AFTER_PAYMENT, unset_financial_lines=True, initial_refund=True)
+            cancellation_result: OrchestrationResultType[OrderResponseModel] = await OrderService.remove_order_completely_and_set_status(order=order, status=EnumOrderStatus.CANCELLED_AFTER_PAYMENT, unset_financial_lines=True, initial_refund=True)
 
             return cancellation_result
         except Exception as exc: 
@@ -192,7 +198,7 @@ class OrderService:
         # The cron job cancels the order automatically. 
         # We get a timeout from stripe.
     @staticmethod
-    def remove_order_completely_and_set_status(order:Order, status:EnumOrderStatus, unset_financial_lines:bool = False, initial_refund:bool = False) -> OrchestrationResultType[OrderResponseModel]:
+    async def remove_order_completely_and_set_status(order:Order, status:EnumOrderStatus, unset_financial_lines:bool = False, initial_refund:bool = False) -> OrchestrationResultType[OrderResponseModel]:
         try:
             ordered_products: list[OrderedProduct] = order.products
 
@@ -207,16 +213,21 @@ class OrderService:
                             financial_line.status = EnumFinancialLineStatus.CANCELLED.value
                             financial_line.save(session=session)
 
-                    # Initial refund and store it in db. 
+                    # Initiate refund and store it in db. 
                     if initial_refund:
-                        # TODO: Initial stripe refund here. 
-                        refund = Refund(
-                            client = order.client,
-                            status = EnumRefundStatus.PENDING.value,
-                            order = order,
-                            total = order.total # TODO: Include the cancelling percentage here and maybe give a percentage to the seller too.  
-                        )
-                        refund.save(session=session)
+                        refunded_amount = (float(refund_percentage) / 100) * order.total
+                        refunded_amount_cents = int(round(refunded_amount * 100))
+                        refund_id = await StripeService.refund_client(payment_intent_id=order.payment_intent_id, amount_in_cents=refunded_amount_cents)
+                        if refund_id:
+                            refund = Refund(
+                                client = order.client,
+                                status = EnumRefundStatus.CREATED.value,
+                                order = order,
+                                original_amount=order.total,
+                                refunded_amount=refunded_amount,
+                                refund_id=refund_id
+                            )
+                            refund.save(session=session)
 
                     # Restore all the product quantities. 
                     for ordered_product in ordered_products:

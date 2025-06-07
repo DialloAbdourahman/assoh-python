@@ -15,10 +15,11 @@ class OrderResponseModel(BaseModel):
     total: float 
     status: EnumOrderStatus 
     products: list[OrderedProductResponseModel]
+    url: Optional[str]
 
 class OrderResponseParser:
     @staticmethod
-    def parse(order: Union[Order, dict]) -> OrderResponseModel:
+    def parse(order: Union[Order, dict], url: Optional[str] = None) -> OrderResponseModel:
         is_dict = isinstance(order, dict)
         data = order if is_dict else order.to_mongo().to_dict()
 
@@ -31,6 +32,8 @@ class OrderResponseParser:
                    else UserResponseParser.parse(order.client),
             products= [OrderedProductResponseParser.parse(product) for product in data.get("products")] if is_dict
                      else [OrderedProductResponseParser.parse(product) for product in order.products],
+
+            url=url if url else None,
 
             created_at=str(data.get("created_at")),
             updated_at=str(data.get("updated_at")) if data.get("updated_at") else None,

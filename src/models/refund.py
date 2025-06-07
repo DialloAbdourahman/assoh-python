@@ -8,7 +8,9 @@ from .user import User
 
 class Refund(BaseModel):
     client = ReferenceField(User, required=True)
-    status = StringField(choices=[e.value for e in EnumFinancialLineStatus], required=True, default=EnumRefundStatus.PENDING.value)
+    status = StringField(choices=[e.value for e in EnumFinancialLineStatus], required=True, default=EnumRefundStatus.CREATED.value)
     order = ReferenceField(Order, required=True)
-    total = FloatField(required=True)
+    original_amount = FloatField(required=True)
+    refunded_amount = FloatField(required=True)
+    refund_id = StringField()
 

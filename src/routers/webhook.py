@@ -34,6 +34,8 @@ async def stripe_webhook(
             WebhookService.checkout_success(order_id, payment_intent_id)
 
         elif event_type == EnumStripeEventType.CHECKOUT_SESSION_EXPIRED.value:
+            # This here is not handled because the crone job will take care of it. 
+            # This even will be received after 24 hours of non payment where as my crone job can run for all orders that have not been paid within 6 or 12 hours. 
             order_id = session.get('metadata', {}).get('order_id')
 
         elif event_type == EnumStripeEventType.PAYMENT_INTENT_FAILED.value:
