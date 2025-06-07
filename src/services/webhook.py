@@ -4,6 +4,7 @@ from enums.order_status_enum import EnumOrderStatus
 from models.order import Order
 from models.ordered_product import OrderedProduct
 from models.financial_line import FinancialLine
+from datetime import datetime
 
 class WebhookService:
     @staticmethod
@@ -11,10 +12,14 @@ class WebhookService:
         if not order_id or not payment_intent_id:
             raise ValueError("Missing order_id or payment_intent_id")
 
-        order: Order = Order.objects(id=order_id, deleted=False, status=EnumOrderStatus.CREATED.value).first()
+        order: Order = Order.objects(id=order_id, deleted=False).first()
 
         if order is None:
             raise ValueError("Order does not exist")
+        
+        # Make this function more idempotent and make sure that the event is not treated twice. 
+        if order.status != EnumOrderStatus.PENDING.value:
+            return
         
         products: list[OrderedProduct] = order.products
 
@@ -26,7 +31,7 @@ class WebhookService:
                     financial_line = FinancialLine(
                         seller=product.product.seller,
                         product=product.product,
-                        status=EnumFinancialLineStatus.CREATED.value,
+                        status=EnumFinancialLineStatus.PENDING.value,
                         price=product.price_at_order,
                         quantity=product.quantity,
                         order=order,
@@ -37,6 +42,7 @@ class WebhookService:
                 # Update the order status
                 order.status = EnumOrderStatus.PAID.value
                 order.payment_intent_id = payment_intent_id
+                order.paid_at = datetime.utcnow()
                 order.save(session=session)
             
 

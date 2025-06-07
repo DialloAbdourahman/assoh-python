@@ -49,3 +49,36 @@ async def get_my_orders(
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR    
     
     return result
+
+@router.post('/cancel/paid/{order_id}', status_code=status.HTTP_200_OK, response_model=OrchestrationResultType[OrderResponseModel])
+async def cancel_paid_order(
+    response: Response, 
+    order_id:str,
+    user_info: UserInfoInToken = Depends(validate_roles([EnumUserRole.CLIENT.value]))
+):
+    result: OrchestrationResultType[OrderResponseModel] = await OrderService.cancel_paid_order(user_info=user_info, order_id=order_id)
+
+    if result.get('code') == EnumResponseCode.FAILED.value:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+
+    if result.get('code') == EnumResponseCode.SERVER_ERROR.value:
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR    
+    
+    return result
+
+@router.post('/cancel/{order_id}', status_code=status.HTTP_200_OK, response_model=OrchestrationResultType[OrderResponseModel])
+async def cancel_order(
+    response: Response, 
+    order_id:str,
+    user_info: UserInfoInToken = Depends(validate_roles([EnumUserRole.CLIENT.value]))
+):
+    result: OrchestrationResultType[OrderResponseModel] = await OrderService.cancel_order(user_info=user_info, order_id=order_id)
+
+    if result.get('code') == EnumResponseCode.FAILED.value:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+
+    if result.get('code') == EnumResponseCode.SERVER_ERROR.value:
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR    
+    
+    return result
+

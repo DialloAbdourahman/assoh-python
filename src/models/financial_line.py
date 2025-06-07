@@ -9,7 +9,7 @@ from .product import Product
 class FinancialLine(BaseModel):
     seller = ReferenceField(User, required=True)
     product = ReferenceField(Product, required=True)
-    status = StringField(choices=[e.value for e in EnumFinancialLineStatus], required=True, default=EnumFinancialLineStatus.CREATED.value)
+    status = StringField(choices=[e.value for e in EnumFinancialLineStatus], required=True, default=EnumFinancialLineStatus.PENDING.value)
     price = FloatField(required=True)
     quantity = IntField(required=True)
     order = ReferenceField(Order, required=True)

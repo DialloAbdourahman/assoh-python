@@ -1,8 +1,7 @@
 from enum import Enum
 
-class EnumFinancialLineStatus(Enum):
+class EnumRefundStatus(Enum):
     PENDING = 'PENDING'
     COLLECTED = 'COLLECTED'
-    CANCELLED='CANCELLED'
 
 
