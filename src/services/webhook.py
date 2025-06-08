@@ -1,10 +1,13 @@
 from mongoengine import get_db
 from enums.financial_line_status import EnumFinancialLineStatus
 from enums.order_status_enum import EnumOrderStatus
+from enums.refund_status import EnumRefundStatus
 from models.order import Order
 from models.ordered_product import OrderedProduct
 from models.financial_line import FinancialLine
 from datetime import datetime
+
+from models.refund import Refund
 
 class WebhookService:
     @staticmethod
@@ -46,6 +49,61 @@ class WebhookService:
                 order.save(session=session)
             
 
+    @staticmethod
+    def handle_refund_created(refund_id:str):
+        if not refund_id:
+            raise ValueError("Missing refund_id or payment_intent_id")
+
+        refund: Refund = Refund.objects(refund_id=refund_id, deleted=False).first()
+
+        if refund is None:
+            raise ValueError("Refund does not exist")
+        
+        # Make this function more idempotent and make sure that the event is not treated twice. 
+        if refund.status != EnumRefundStatus.CREATED.value:
+            return
+        
+        refund.status = EnumRefundStatus.INITIATED.value 
+        refund.save()
+
+    @staticmethod
+    def handle_refund_succeeded(refund_id:str):
+        if not refund_id:
+            raise ValueError("Missing refund_id or payment_intent_id")
+
+        refund: Refund = Refund.objects(refund_id=refund_id, deleted=False).first()
+
+        if refund is None:
+            raise ValueError("Refund does not exist")
+        
+        # Make this function more idempotent and make sure that the event is not treated twice. 
+        if refund.status != EnumRefundStatus.INITIATED.value:
+            return
+        
+        refund.status = EnumRefundStatus.SUCCESS.value
+        refund.save() 
+
+    @staticmethod
+    def handle_refund_failed(refund_id:str):
+        if not refund_id:
+            raise ValueError("Missing refund_id or payment_intent_id")
+
+        refund: Refund = Refund.objects(refund_id=refund_id, deleted=False).first()
+
+        if refund is None:
+            raise ValueError("Refund does not exist")
+        
+        # Make this function more idempotent and make sure that the event is not treated twice. 
+        if refund.status != EnumRefundStatus.INITIATED.value:
+            return
+        
+        refund.status = EnumRefundStatus.FAILED.value
+        refund.save()
+            
+
+
+        
+        
 
         
         

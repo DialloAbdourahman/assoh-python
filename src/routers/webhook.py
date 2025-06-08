@@ -33,14 +33,23 @@ async def stripe_webhook(
             payment_intent_id = session.get('payment_intent')
             WebhookService.checkout_success(order_id, payment_intent_id)
 
-        elif event_type == EnumStripeEventType.CHECKOUT_SESSION_EXPIRED.value:
-            # This here is not handled because the crone job will take care of it. 
-            # This even will be received after 24 hours of non payment where as my crone job can run for all orders that have not been paid within 6 or 12 hours. 
-            order_id = session.get('metadata', {}).get('order_id')
-
         elif event_type == EnumStripeEventType.PAYMENT_INTENT_FAILED.value:
             order_id = session.get('metadata', {}).get('order_id')
             payment_intent_id = session.get('payment_intent')
+
+        elif event_type == EnumStripeEventType.REFUND_CREATED.value:
+            refund_id = session.get('id')
+            WebhookService.handle_refund_created(refund_id=refund_id)
+
+        elif event_type == EnumStripeEventType.REFUND_UPDATED.value:
+            refund_id = session.get('id')
+            status = session.get('status')
+            if status == 'succeeded':
+                WebhookService.handle_refund_succeeded(refund_id=refund_id)
+
+        elif event_type == EnumStripeEventType.REFUND_FAILED.value:
+            refund_id = session.get('id')
+            WebhookService.handle_refund_failed(refund_id=refund_id)
 
     except Exception as e:
         print(f"Error handling Stripe event: {e}")

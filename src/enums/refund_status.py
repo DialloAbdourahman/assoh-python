@@ -1,8 +1,9 @@
 from enum import Enum
 
 class EnumRefundStatus(Enum):
-    PENDING = 'PENDING'
-    COLLECTED = 'COLLECTED'
     CREATED= 'CREATED'
+    INITIATED = 'INITIATED'
+    FAILED = 'FAILED'
+    SUCCESS = 'SUCCESS'
 
 
