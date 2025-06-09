@@ -29,7 +29,10 @@ class StripeService:
             line_items=line_items,
             mode='payment',
             metadata={
-                'order_id': str(order.id),  # useful to track in webhook
+                'order_id': str(order.id),  # Useful on checkout success event
+            },
+            payment_intent_data={
+                'metadata': {'order_id': str(order.id)}  # Useful on failed payment intent event
             },
             success_url='https://yourapp.com/order/success?session_id={CHECKOUT_SESSION_ID}',
             cancel_url='https://yourapp.com/order/cancel',

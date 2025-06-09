@@ -19,7 +19,7 @@ from utils_types.user_info_in_token import UserInfoInToken
 from mongoengine import get_db, Q
 from stripe.checkout import Session
 from .stripe import StripeService
-from utils.config import refund_percentage, cancellation_period_in_minutes
+from utils.config import refund_percentage, cancellation_paid_order_period_in_minutes
 
 class OrderService:
     @staticmethod
@@ -179,16 +179,51 @@ class OrderService:
                         message='Can only cancel paid orders'
                 )
 
-            if not order.paid_at or datetime.utcnow() - order.paid_at > timedelta(minutes=int(cancellation_period_in_minutes)):
+            if not order.paid_at or datetime.utcnow() - order.paid_at > timedelta(minutes=int(cancellation_paid_order_period_in_minutes)):
                 return OrchestrationResult.failure(
                     status_code=EnumResponseStatusCode.CANNOT_CANCEL_AFTER_TIMEOUT,
-                    message=f'You can only cancel an order within {cancellation_period_in_minutes} minutes of payment.'
+                    message=f'You can only cancel an order within {cancellation_paid_order_period_in_minutes} minutes of payment.'
                 )
             
             cancellation_result: OrchestrationResultType[OrderResponseModel] = await OrderService.remove_order_completely_and_set_status(order=order, status=EnumOrderStatus.CANCELLED_AFTER_PAYMENT, unset_financial_lines=True, initial_refund=True)
 
             return cancellation_result
         except Exception as exc: 
+            print(exc)
+            return OrchestrationResult.server_error()
+        
+    @staticmethod
+    async def retry_failed_payment(user_info:UserInfoInToken, order_id:str) -> OrchestrationResultType[OrderResponseModel]:
+        try:
+            # Get the order
+            order = Order.objects(
+                id=order_id,
+                client=user_info.id,
+                deleted=False
+            ).first()
+
+            if not order:
+                return OrchestrationResult.failure(
+                        status_code=EnumResponseStatusCode.NOT_FOUND,
+                        message='Order not found.'
+                )
+            
+            if order.status != EnumOrderStatus.PAYMENT_ERROR.value:
+                return OrchestrationResult.failure(
+                        status_code=EnumResponseStatusCode.CAN_ONLY_ORDER_WITH_PAYMENT_ERROR,
+                        message='Can only retry orders with payment errors'
+                )
+            
+
+            # Get the checkout url 
+            checkout_session: Session = StripeService.create_checkout_session(order=order)
+                
+            return OrchestrationResult.success(
+                data=OrderResponseParser.parse(order=order,url=checkout_session.url), 
+                message='Payment url created successfully', 
+                status_code=EnumResponseStatusCode.CREATED_SUCCESSFULLY
+            )
+        except Exception as exc:
             print(exc)
             return OrchestrationResult.server_error()
 
@@ -247,3 +282,4 @@ class OrderService:
         except Exception as exc: 
             print(exc)
             return OrchestrationResult.server_error()
+        

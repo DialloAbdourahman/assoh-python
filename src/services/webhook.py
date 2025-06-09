@@ -21,7 +21,7 @@ class WebhookService:
             raise ValueError("Order does not exist")
         
         # Make this function more idempotent and make sure that the event is not treated twice. 
-        if order.status != EnumOrderStatus.PENDING.value:
+        if order.status != EnumOrderStatus.PENDING.value and order.status != EnumOrderStatus.PAYMENT_ERROR.value:
             return
         
         products: list[OrderedProduct] = order.products
@@ -47,7 +47,25 @@ class WebhookService:
                 order.payment_intent_id = payment_intent_id
                 order.paid_at = datetime.utcnow()
                 order.save(session=session)
-            
+
+    @staticmethod
+    def payment_intent_failed(order_id:str, payment_intent_id:str):
+        if not order_id or not payment_intent_id:
+            raise ValueError("Missing order_id or payment_intent_id")
+
+        order: Order = Order.objects(id=order_id, deleted=False).first()
+
+        if order is None:
+            raise ValueError("Order does not exist")
+        
+        # Make this function more idempotent and make sure that the event is not treated twice. 
+        if order.status != EnumOrderStatus.PENDING.value and order.status != EnumOrderStatus.PAYMENT_ERROR.value:
+            return
+        
+        order.payment_intent_id = payment_intent_id
+        order.status = EnumOrderStatus.PAYMENT_ERROR.value
+        order.updated_at = datetime.utcnow()
+        order.save()
 
     @staticmethod
     def handle_refund_created(refund_id:str):

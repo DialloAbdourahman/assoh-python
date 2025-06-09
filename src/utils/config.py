@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 environment = os.getenv("ENVIRONMENT")
 base_url = os.getenv("ROOT_PATH")
@@ -15,7 +15,9 @@ stripe_secret_key = os.getenv('STRIPE_SECRET_KEY')
 stripe_webhook_key = os.getenv('STRIPE_WEBHOOK_KEY')
 
 refund_percentage = os.getenv('REFUND_PERCENTAGE')
-cancellation_period_in_minutes = os.getenv('CANCELLATION_PERIOD_IN_MINUTES')
+cancellation_paid_order_period_in_minutes = os.getenv('CANCELLATION_PAID_ORDER_PERIOD_IN_MINUTES')
+cron_job_minutes_interval = os.getenv('CRON_JOB_MINUTES_INTERVAL')
+max_pending_or_failed_order_time_in_minutes = os.getenv('MAX_PENDING_OR_FAILED_ORDER_TIME_IN_MINUTES')
 
 algorithm = os.getenv("ALGORITHM")
 

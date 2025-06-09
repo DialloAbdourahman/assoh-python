@@ -35,7 +35,8 @@ async def stripe_webhook(
 
         elif event_type == EnumStripeEventType.PAYMENT_INTENT_FAILED.value:
             order_id = session.get('metadata', {}).get('order_id')
-            payment_intent_id = session.get('payment_intent')
+            payment_intent_id = session.get('id')
+            WebhookService.payment_intent_failed(order_id=order_id, payment_intent_id=payment_intent_id)
 
         elif event_type == EnumStripeEventType.REFUND_CREATED.value:
             refund_id = session.get('id')

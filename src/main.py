@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from mongoengine import connect, disconnect
+import scheduler
 from settings import Settings
 from utils.config import database_name, database_host
 from routers import auth, admin, category, product, order, webhook
@@ -15,12 +16,22 @@ app.include_router(order.router)
 app.include_router(webhook.router)
 
 async def startup_event():
-    connect(db=database_name, host=database_host)
-    print('Assoh service connected to DB.')
+    try:
+        connect(db=database_name, host=database_host)
+        print('Assoh service connected to DB.')
+        scheduler.start_scheduler()
+        print('Scheduler started')
+    except Exception as e:
+        print(f"Failed to start scheduler: {e}")
 
 async def shutdown_event():
-    disconnect()
-    print('Assoh service disconnected to DB.')
+    try:
+        disconnect()
+        print('Assoh service disconnected to DB.')
+        scheduler.scheduler.shutdown()
+        print('Scheduler stopped')
+    except Exception as e:
+        print(f"Failed to shutdown scheduler: {e}")
 
 app.add_event_handler("startup", startup_event)
 app.add_event_handler("shutdown", shutdown_event)
