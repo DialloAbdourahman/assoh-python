@@ -1,12 +1,17 @@
 import math
 from dto.request.category import CreateCategoryDto, UpdateCategoryDto
 from dto.response.category import CategoryResponseModel, CategoryResponseParser
+from dto.response.refund import RefundResponseModel, RefundResponseParser
 from dto.response.user import UserResponseModel, UserResponseParser 
 from dto.response.user import UserResponseParser 
+from enums.refund_status import EnumRefundStatus
 from enums.response_codes import EnumResponseStatusCode
 from enums.user_role_enum import EnumUserRole
+from models import order
 from models.category import Category
+from models.refund import Refund
 from models.user import User
+from services.stripe import StripeService
 from utils.orchestration_result import OrchestrationResult, OrchestrationResultType
 from datetime import datetime
 from mongoengine import Q
@@ -254,6 +259,41 @@ class AdminService:
                 data=CategoryResponseParser.parse(category=category), 
                 message='Category restored successfully', 
                 status_code=EnumResponseStatusCode.RESTORED_SUCCESSFULLY
+            )
+        except Exception as exc:
+            print(exc)
+            return OrchestrationResult.server_error()
+        
+    @staticmethod
+    async def retry_refund(refund_id:str) -> OrchestrationResultType[RefundResponseModel]:
+        try:
+            refund: Refund = Refund.objects(id=refund_id).first()
+
+            if not refund:
+                return OrchestrationResult.failure(
+                        status_code=EnumResponseStatusCode.NOT_FOUND,
+                        message='Refund does not exist.'
+                )
+            
+            if refund.status != EnumRefundStatus.FAILED.value:
+                return OrchestrationResult.failure(
+                    status_code=EnumResponseStatusCode.CAN_ONLY_RETRY_FAILED_REFUNDS,
+                    message='Can only retry failed refunds.'
+                )
+            
+            refund_id = await StripeService.refund_client(
+                payment_intent_id=refund.order.payment_intent_id, 
+                amount_in_cents=int(round(refund.order.refunded_amount * 100))
+            )
+            
+            refund.status = EnumRefundStatus.CREATED.value
+            refund.refund_id = refund_id
+            refund.save()
+
+            return OrchestrationResult.success(
+                data=RefundResponseParser.parse(refund=refund), 
+                message='Refunded successfully', 
+                status_code=EnumResponseStatusCode.REFUND_INITIATED
             )
         except Exception as exc:
             print(exc)

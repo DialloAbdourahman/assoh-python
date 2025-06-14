@@ -5,6 +5,7 @@ from dto.request.order import CreateOrderDto
 from dto.response.category import CategoryResponseModel
 from dto.response.order import OrderResponseModel
 from dto.response.paginated import Paginated
+from dto.response.refund import RefundResponseModel
 from enums.order_status_enum import EnumOrderStatus
 from enums.response_codes import EnumResponseCode
 from dto.response.user import  UserResponseModel
@@ -89,6 +90,23 @@ async def retry_failed_payment(
     user_info: UserInfoInToken = Depends(validate_roles([EnumUserRole.CLIENT.value]))
 ):
     result: OrchestrationResultType[OrderResponseModel] = await OrderService.retry_failed_payment(user_info=user_info, order_id=order_id)
+
+    if result.get('code') == EnumResponseCode.FAILED.value:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+
+    if result.get('code') == EnumResponseCode.SERVER_ERROR.value:
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR    
+    
+    return result
+
+@router.get('/refunds', status_code=status.HTTP_200_OK, response_model=OrchestrationResultType[Paginated[RefundResponseModel]])
+async def get_my_refunds(
+    response: Response, 
+    page:int = 1,
+    limit:int = 10,
+    user_info: UserInfoInToken = Depends(validate_roles([EnumUserRole.CLIENT.value]))
+):
+    result: OrchestrationResultType[Paginated[RefundResponseModel]] = await OrderService.get_my_refunds(page=page, limit=limit, user_info=user_info)
 
     if result.get('code') == EnumResponseCode.FAILED.value:
         response.status_code = status.HTTP_400_BAD_REQUEST

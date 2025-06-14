@@ -3,6 +3,7 @@ import math
 from typing import Optional
 from dto.response.order import OrderResponseModel, OrderResponseParser
 from dto.response.paginated import Paginated
+from dto.response.refund import RefundResponseModel, RefundResponseParser
 from enums.financial_line_status import EnumFinancialLineStatus
 from enums.order_status_enum import EnumOrderStatus
 from dto.request.order import CreateOrderDto
@@ -226,6 +227,40 @@ class OrderService:
         except Exception as exc:
             print(exc)
             return OrchestrationResult.server_error()
+        
+    @staticmethod
+    async def get_my_refunds(page:int, limit:int, user_info:UserInfoInToken, ) -> OrchestrationResultType[Paginated[RefundResponseModel]]:
+        try:
+            client = User.objects(id=user_info.id, deleted=False).first()
+
+            if client is None:
+                    return OrchestrationResult.failure(
+                        status_code=EnumResponseStatusCode.NOT_FOUND,
+                        message='Client does not exist.'
+                    )
+
+            filter_query = Q(deleted=False, client=client)
+                
+            skip = (page - 1) * limit
+            total_items = Refund.objects(filter_query).count()
+            total_pages = math.ceil(total_items / limit)
+
+            refunds: list[Refund] = Refund.objects(filter_query).skip(skip).limit(limit)
+
+            return OrchestrationResult.success(
+                data=RefundResponseParser.parse_paginated(
+                    refunds=refunds,
+                    total_pages=total_pages,
+                    limit=limit,
+                    page=page,
+                    total_items=total_items
+                ), 
+                message='Recovered successfully successfully', 
+                status_code=EnumResponseStatusCode.RECOVERED_SUCCESSFULLY
+            )
+        except Exception as exc:
+            print(exc)
+            return OrchestrationResult.server_error()
 
     # This method will be when:
         # The user wants to cancel an order that has not been paid for.
@@ -237,40 +272,42 @@ class OrderService:
         try:
             ordered_products: list[OrderedProduct] = order.products
 
-            # Start a session and a transaction
+            refunded_amount = 0
+            refund_id = None
+
+            if initial_refund:
+                refund_percentage = float(refund_percentage)
+                refunded_amount = (float(refund_percentage) / 100) * order.total
+                refunded_amount_cents = int(round(refunded_amount * 100))
+                refund_id = await StripeService.refund_client(
+                    payment_intent_id=order.payment_intent_id, 
+                    amount_in_cents=refunded_amount_cents
+                )
+
             with get_db().client.start_session() as session:
                 with session.start_transaction():
-               
-                    # Get all financial lines of this order and mark them as cancelled if the order status is not PENDING.
                     if unset_financial_lines:
                         financial_lines: list[FinancialLine] = FinancialLine.objects(order=order)
                         for financial_line in financial_lines:
                             financial_line.status = EnumFinancialLineStatus.CANCELLED.value
                             financial_line.save(session=session)
 
-                    # Initiate refund and store it in db. 
-                    if initial_refund:
-                        refunded_amount = (float(refund_percentage) / 100) * order.total
-                        refunded_amount_cents = int(round(refunded_amount * 100))
-                        refund_id = await StripeService.refund_client(payment_intent_id=order.payment_intent_id, amount_in_cents=refunded_amount_cents)
-                        if refund_id:
-                            refund = Refund(
-                                client = order.client,
-                                status = EnumRefundStatus.CREATED.value,
-                                order = order,
-                                original_amount=order.total,
-                                refunded_amount=refunded_amount,
-                                refund_id=refund_id
-                            )
-                            refund.save(session=session)
+                    if initial_refund and refund_id:
+                        refund = Refund(
+                            client=order.client,
+                            status=EnumRefundStatus.CREATED.value,
+                            order=order,
+                            original_amount=order.total,
+                            refunded_amount=refunded_amount,
+                            refund_id=refund_id
+                        )
+                        refund.save(session=session)
 
-                    # Restore all the product quantities. 
                     for ordered_product in ordered_products:
                         product: Product = Product.objects(id=str(ordered_product.product.id)).first()
                         product.quantity += ordered_product.quantity
                         product.save(session=session)
 
-                    # Update the order status
                     order.status = status.value
                     order.save(session=session)
 
@@ -283,3 +320,4 @@ class OrderService:
             print(exc)
             return OrchestrationResult.server_error()
         
+
