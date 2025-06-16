@@ -40,6 +40,6 @@ app.add_event_handler("shutdown", shutdown_event)
 def get_health():
     return {'Status':"Running"}
 
-# Admin route to find refund by id.
-# Admin route to list refunds and filter by status for example.
 # Modify the create product route to accept a list of images.
+# Manage error middleware
+# Complete testing course 

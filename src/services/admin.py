@@ -299,3 +299,47 @@ class AdminService:
             print(exc)
             return OrchestrationResult.server_error()
         
+    @staticmethod
+    async def get_refund(refund_id:str) -> OrchestrationResultType[RefundResponseModel]:
+        try:
+            refund: Refund = Refund.objects(id=refund_id).first()
+
+            if not refund:
+                return OrchestrationResult.failure(
+                        status_code=EnumResponseStatusCode.NOT_FOUND,
+                        message='Refund does not exist.'
+                )
+
+            return OrchestrationResult.success(
+                data=RefundResponseParser.parse(refund=refund), 
+                message='Recovered successfully', 
+                status_code=EnumResponseStatusCode.RECOVERED_SUCCESSFULLY
+            )
+        except Exception as exc:
+            print(exc)
+            return OrchestrationResult.server_error()
+        
+    @staticmethod
+    async def get_refunds(page:int, limit:int, status:EnumRefundStatus) -> OrchestrationResultType[RefundResponseModel]:
+        try:
+            skip = (page - 1) * limit
+            total_items = Refund.objects(status=status.value).count()
+            total_pages = math.ceil(total_items / limit)
+
+            refunds: Refund = Refund.objects(status=status.value).skip(skip).limit(limit)
+
+            return OrchestrationResult.success(
+                data=RefundResponseParser.parse_paginated(
+                    refunds==refunds,
+                    total_pages=total_pages,
+                    limit=limit,
+                    page=page,
+                    total_items=total_items
+                ), 
+                message='Recovered successfully', 
+                status_code=EnumResponseStatusCode.RECOVERED_SUCCESSFULLY
+            )
+        except Exception as exc:
+            print(exc)
+            return OrchestrationResult.server_error()
+        
